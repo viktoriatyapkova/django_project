@@ -3,6 +3,8 @@ from uuid import uuid4
 from datetime import datetime, date, timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import CheckConstraint, Q
 
 
 TITLE_MAX_LENGTH = 250
@@ -54,8 +56,8 @@ class ModifiedMixin(models.Model):
         abstract = True
 
 class Marketplace(UUIDMixin, CreatedMixin, ModifiedMixin):
-    title = models.TextField(_('title'), null=False, blank=False, max_length=TITLE_MAX_LENGTH)
-    url_address = models.URLField(_('url address'), null=False, blank=False)
+    title = models.TextField(_('title'), null=True, blank=True, max_length=TITLE_MAX_LENGTH)
+    url_address = models.URLField(_('url address'), null=True, blank=True)
 
     shops = models.ManyToManyField('Shop', through='ShopToMarketplace')
     
@@ -70,9 +72,9 @@ class Marketplace(UUIDMixin, CreatedMixin, ModifiedMixin):
 
 
 class Shop(UUIDMixin, CreatedMixin, ModifiedMixin):
-    title = models.TextField(_('title'), null=False, blank=False, max_length=TITLE_MAX_LENGTH)
-    description = models.TextField(_('description'), null=False, blank=False, max_length=DESCRIPTION_MAX_LEN)
-    rating = models.FloatField(_('rating'), null=False, blank=False)
+    title = models.TextField(_('title'), null=False, blank=True, max_length=TITLE_MAX_LENGTH)
+    description = models.TextField(_('description'), null=True, blank=False, max_length=DESCRIPTION_MAX_LEN)
+    rating = models.FloatField(_('rating'), null=True, blank=True,  validators=[MinValueValidator(0.0), MaxValueValidator(5.0)]) # добавить атрибут-выборку, чтобы там был выбор только он 0 до 5
 
     marketplaces = models.ManyToManyField(Marketplace, verbose_name=_('Marketplace'), through='ShopToMarketplace')
 
@@ -85,12 +87,13 @@ class Shop(UUIDMixin, CreatedMixin, ModifiedMixin):
         verbose_name = _('shop')
         verbose_name_plural = _('shops')
 
+
 class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
     shop_id = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.CASCADE)
-    title = models.TextField(_('title'), null=True, blank=True, max_length=TITLE_MAX_LENGTH)
+    title = models.TextField(_('title'), null=False, blank=True, max_length=TITLE_MAX_LENGTH)
     description = models.TextField(_('description'), null=True, blank=True, max_length=DESCRIPTION_MAX_LEN)
-    start_date = models.DateField(_('start date'), null=True, blank=True, default=datetime.now)
-    end_date = models.DateField(_('end date'), null=True, blank=True, default=datetime.now)
+    start_date = models.DateField(_('start date'), null=True, blank=True, default=datetime.now) 
+    end_date = models.DateField(_('end date'), null=True, blank=True, default=datetime.now) 
 
     def __str__(self):
         return f'{self.title}, {self.description}, {self.start_date}, {self.end_date}'
@@ -100,6 +103,12 @@ class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
         ordering = ['title', 'start_date', 'end_date']
         verbose_name = _('discount')
         verbose_name_plural = _('discounts')
+        constraints = [
+            CheckConstraint(
+                check=Q(start_date__lte='end_date') & Q(end_date__gte='start_date'),
+                name='start_date_end_date_check',
+            )
+        ]
 
 
 class ShopToMarketplace(models.Model):
