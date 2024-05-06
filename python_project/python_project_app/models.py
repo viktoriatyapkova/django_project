@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import CheckConstraint, Q
+from django.conf.global_settings import AUTH_USER_MODEL
 
 
 TITLE_MAX_LENGTH = 250
@@ -12,6 +13,9 @@ DESCRIPTION_MAX_LEN = 1000
 
 def get_datetime():
     return datetime.now(timezone.utc)
+def check_date(dts: datetime, dte: datetime):
+    if not dts < dte:
+        raise ValidationError('Wrong date given!')
 
 class UUIDMixin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -90,11 +94,10 @@ class Shop(UUIDMixin, CreatedMixin, ModifiedMixin):
 
 class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
     shop_id = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.CASCADE)
-    title = models.TextField(_('title'), null=False, blank=True, max_length=TITLE_MAX_LENGTH)
+    title = models.TextField(_('title'), null=False, blank=True, max_length=TITLE_MAX_LENGTH, default='not title')
     description = models.TextField(_('description'), null=True, blank=True, max_length=DESCRIPTION_MAX_LEN)
-    start_date = models.DateField(_('start date'), null=True, blank=True, default=datetime.now) 
-    end_date = models.DateField(_('end date'), null=True, blank=True, default=datetime.now) 
-
+    start_date = models.DateField(_('start date'), null=True, blank=True, default=datetime.now, validators=[check_date]) 
+    end_date = models.DateField(_('end date'), null=True, blank=True, default=datetime.now, validators=[check_date])
     def __str__(self):
         return f'{self.title}, {self.description}, {self.start_date}, {self.end_date}'
 
@@ -103,13 +106,12 @@ class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
         ordering = ['title', 'start_date', 'end_date']
         verbose_name = _('discount')
         verbose_name_plural = _('discounts')
-        constraints = [
-            CheckConstraint(
-                check=Q(start_date__lte='end_date') & Q(end_date__gte='start_date'),
-                name='start_date_end_date_check',
-            )
-        ]
+        
 
+
+def check_positive(number) -> None:
+    if number < 0:
+        raise ValidationError('value should be equal or greater than zero')
 
 class ShopToMarketplace(models.Model):
     shop = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.CASCADE)
@@ -122,3 +124,44 @@ class ShopToMarketplace(models.Model):
         )
         verbose_name = _('relationship shop marketplace')
         verbose_name_plural = _('relationships shop marketplace')
+
+
+class Client(UUIDMixin, CreatedMixin, ModifiedMixin):
+    money = models.DecimalField(
+        verbose_name=_('money'),
+        decimal_places=2,
+        max_digits=11,
+        default=0,
+        validators=[check_positive],
+    )
+    user = models.OneToOneField(AUTH_USER_MODEL, unique=True, verbose_name=_('user'), on_delete=models.CASCADE)
+    books = models.ManyToManyField(Shop, through='ShopToClient', verbose_name=_('shops'))
+
+    class Meta:
+        db_table = '"online"."client"'
+        verbose_name = _('client')
+        verbose_name_plural = _('clients')
+
+    @property
+    def username(self) -> str:
+        return self.user.username
+
+    @property
+    def first_name(self) -> str:
+        return self.user.first_name
+
+    @property
+    def last_name(self) -> str:
+        return self.user.last_name
+
+    def __str__(self) -> str:
+        return f'{self.username} ({self.first_name} {self.last_name})'
+    
+class ShopToClient(UUIDMixin, CreatedMixin):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name=_('shop'))
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name=_('client'))
+
+    class Meta:
+        db_table = '"online"."shop_to_client"'
+        verbose_name = _('relationship shop client')
+        verbose_name_plural = _('relationships shop client')
