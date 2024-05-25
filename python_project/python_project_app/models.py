@@ -4,7 +4,6 @@ from datetime import datetime, date, timezone
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db.models import CheckConstraint, Q
 from django.conf.global_settings import AUTH_USER_MODEL
 
 
@@ -13,9 +12,8 @@ DESCRIPTION_MAX_LEN = 1000
 
 def get_datetime():
     return datetime.now(timezone.utc)
-def check_date(dts: datetime, dte: datetime):
-    if not dts < dte:
-        raise ValidationError('Wrong date given!')
+
+
 
 class UUIDMixin(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -60,14 +58,14 @@ class ModifiedMixin(models.Model):
         abstract = True
 
 class Marketplace(UUIDMixin, CreatedMixin, ModifiedMixin):
-    title = models.TextField(_('title'), null=True, blank=True, max_length=TITLE_MAX_LENGTH)
+    title = models.TextField(_('title'), null=True, blank=False, max_length=TITLE_MAX_LENGTH)
     url_address = models.URLField(_('url address'), null=True, blank=True)
 
     shops = models.ManyToManyField('Shop', through='ShopToMarketplace')
-    
+
     def __str__(self) -> str:
         return self.title
-    
+
     class Meta:
         db_table = '"online"."marketplace"'
         ordering = ['title']
@@ -76,8 +74,8 @@ class Marketplace(UUIDMixin, CreatedMixin, ModifiedMixin):
 
 
 class Shop(UUIDMixin, CreatedMixin, ModifiedMixin):
-    title = models.TextField(_('title'), null=False, blank=True, max_length=TITLE_MAX_LENGTH)
-    description = models.TextField(_('description'), null=True, blank=False, max_length=DESCRIPTION_MAX_LEN)
+    title = models.TextField(_('title'), null=False, blank=False, max_length=TITLE_MAX_LENGTH)
+    description = models.TextField(_('description'), null=True, blank=True, max_length=DESCRIPTION_MAX_LEN)
     rating = models.FloatField(_('rating'), null=True, blank=True,  validators=[MinValueValidator(0.0), MaxValueValidator(5.0)]) # добавить атрибут-выборку, чтобы там был выбор только он 0 до 5
 
     marketplaces = models.ManyToManyField(Marketplace, verbose_name=_('Marketplace'), through='ShopToMarketplace')
@@ -91,13 +89,22 @@ class Shop(UUIDMixin, CreatedMixin, ModifiedMixin):
         verbose_name = _('shop')
         verbose_name_plural = _('shops')
 
-
+    
 class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
-    shop_id = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.CASCADE)
-    title = models.TextField(_('title'), null=False, blank=True, max_length=TITLE_MAX_LENGTH, default='not title')
+    shop = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.SET_NULL, null=True, blank=True)
+    title = models.TextField(_('title'), null=False, blank=False, max_length=TITLE_MAX_LENGTH)
     description = models.TextField(_('description'), null=True, blank=True, max_length=DESCRIPTION_MAX_LEN)
-    start_date = models.DateField(_('start date'), null=True, blank=True, default=datetime.now, validators=[check_date]) 
-    end_date = models.DateField(_('end date'), null=True, blank=True, default=datetime.now, validators=[check_date])
+    start_date = models.DateField(_('start date'), null=True, blank=True, default=date.today) 
+    end_date = models.DateField(_('end date'), null=True, blank=True, default=date.today)
+
+    def clean(self):
+        if self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                raise ValidationError({'start_date': "Дата начала не может быть позже даты окончания."})
+            if self.end_date < self.start_date:
+                raise ValidationError({'end_date': "Дата окончания не может быть раньше даты начала."})
+        super().clean()
+    
     def __str__(self):
         return f'{self.title}, {self.description}, {self.start_date}, {self.end_date}'
 
@@ -106,7 +113,7 @@ class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
         ordering = ['title', 'start_date', 'end_date']
         verbose_name = _('discount')
         verbose_name_plural = _('discounts')
-        
+
 
 
 def check_positive(number) -> None:
@@ -114,9 +121,9 @@ def check_positive(number) -> None:
         raise ValidationError('value should be equal or greater than zero')
 
 class ShopToMarketplace(models.Model):
-    shop = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.CASCADE)
-    marketplace = models.ForeignKey(Marketplace, verbose_name=_('marketplace'), on_delete=models.CASCADE)
-    
+    shop = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.SET_NULL, null=True, blank=True)
+    marketplace = models.ForeignKey(Marketplace, verbose_name=_('marketplace'), on_delete=models.SET_NULL, null=True, blank=True)
+
     class Meta:
         db_table = '"online"."shop_to_marketplace"'
         unique_together = (
@@ -135,7 +142,7 @@ class Client(UUIDMixin, CreatedMixin, ModifiedMixin):
         validators=[check_positive],
     )
     user = models.OneToOneField(AUTH_USER_MODEL, unique=True, verbose_name=_('user'), on_delete=models.CASCADE)
-    books = models.ManyToManyField(Shop, through='ShopToClient', verbose_name=_('shops'))
+    shops = models.ManyToManyField(Shop, through='ShopToClient', verbose_name=_('shops'))
 
     class Meta:
         db_table = '"online"."client"'

@@ -28,7 +28,7 @@ SECRET_KEY = "django-insecure-dk94*39y*9kzjgef(3d%5ell-jz-y6m9j7se2_%a)!fx8(-=hv
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+ 
 ALLOWED_HOSTS = []
 
 
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "python_project_app",
     'rest_framework',
     'rest_framework.authtoken',
+    'django_extensions',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -87,6 +88,7 @@ WSGI_APPLICATION = "python_project.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+# TEST_RUNNER = 'tests.runner.PostgresSchemaRunner'
 
 DATABASES = {
     'default': {
@@ -96,12 +98,14 @@ DATABASES = {
         'PASSWORD': getenv('PG_PASSWORD'),
         'HOST': getenv('PG_HOST'),
         'PORT': getenv('PG_PORT'),
-        # 'OPTIONS': {'options': '-c search_path=public,myschema'},
-        # 'TEST': {
-        #     'NAME': 'test_db',
-        # },
+        'OPTIONS': {'options': '-c search_path=public,online'},
+        'TEST': {
+            'NAME': 'test_db',
+        },
     }
 }
+
+TEST_RUNNER = 'tests.runner.PostgresSchemaRunner'
 
 
 # Password validation
@@ -139,6 +143,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = "static/"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
