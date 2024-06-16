@@ -1,11 +1,14 @@
-from django.db import models
+from datetime import date, datetime, timezone
 from uuid import uuid4
-from datetime import datetime, date, timezone
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
-from django.core.validators import MaxValueValidator, MinValueValidator
-from django.conf.global_settings import AUTH_USER_MODEL
 
+from django.conf.global_settings import AUTH_USER_MODEL
+from django.contrib.contenttypes.fields import (GenericForeignKey,
+                                                GenericRelation)
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 TITLE_MAX_LENGTH = 250
 DESCRIPTION_MAX_LEN = 1000
@@ -89,36 +92,6 @@ class Shop(UUIDMixin, CreatedMixin, ModifiedMixin):
         verbose_name = _('shop')
         verbose_name_plural = _('shops')
 
-    
-class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
-    shop = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.SET_NULL, null=True, blank=True)
-    title = models.TextField(_('title'), null=False, blank=False, max_length=TITLE_MAX_LENGTH)
-    description = models.TextField(_('description'), null=True, blank=True, max_length=DESCRIPTION_MAX_LEN)
-    start_date = models.DateField(_('start date'), null=True, blank=True, default=date.today) 
-    end_date = models.DateField(_('end date'), null=True, blank=True, default=date.today)
-
-    def clean(self):
-        if self.start_date and self.end_date:
-            if self.start_date > self.end_date:
-                raise ValidationError({'start_date': "Дата начала не может быть позже даты окончания."})
-            if self.end_date < self.start_date:
-                raise ValidationError({'end_date': "Дата окончания не может быть раньше даты начала."})
-        super().clean()
-    
-    def __str__(self):
-        return f'{self.title}, {self.description}, {self.start_date}, {self.end_date}'
-
-    class Meta:
-        db_table = '"online"."discount"'
-        ordering = ['title', 'start_date', 'end_date']
-        verbose_name = _('discount')
-        verbose_name_plural = _('discounts')
-
-
-
-def check_positive(number) -> None:
-    if number < 0:
-        raise ValidationError('value should be equal or greater than zero')
 
 class ShopToMarketplace(models.Model):
     shop = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.SET_NULL, null=True, blank=True)
@@ -134,16 +107,12 @@ class ShopToMarketplace(models.Model):
 
 
 class Client(UUIDMixin, CreatedMixin, ModifiedMixin):
-    money = models.DecimalField(
-        verbose_name=_('money'),
-        decimal_places=2,
-        max_digits=11,
-        default=0,
-        validators=[check_positive],
-    )
     user = models.OneToOneField(AUTH_USER_MODEL, unique=True, verbose_name=_('user'), on_delete=models.CASCADE)
     shops = models.ManyToManyField(Shop, through='ShopToClient', verbose_name=_('shops'))
-
+    favorite_discounts = models.ManyToManyField('Discount', related_name='favorited_by', through='FavoriteDiscount')
+    photo = models.ImageField(_('photo'), upload_to='client_photos', blank=True, null=True)
+    
+    
     class Meta:
         db_table = '"online"."client"'
         verbose_name = _('client')
@@ -164,6 +133,36 @@ class Client(UUIDMixin, CreatedMixin, ModifiedMixin):
     def __str__(self) -> str:
         return f'{self.username} ({self.first_name} {self.last_name})'
     
+
+
+class Discount(UUIDMixin, CreatedMixin, ModifiedMixin):
+    shop = models.ForeignKey(Shop, verbose_name=_('shop'), on_delete=models.SET_NULL, null=True, blank=True)
+    title = models.TextField(_('title'), null=False, blank=False, max_length=TITLE_MAX_LENGTH)
+    description = models.TextField(_('description'), null=True, blank=True, max_length=DESCRIPTION_MAX_LEN)
+    start_date = models.DateField(_('start date'), null=True, blank=True, default=date.today) 
+    end_date = models.DateField(_('end date'), null=True, blank=True, default=date.today)
+    image = models.ImageField(_('image'), upload_to='discount_images', null=True, blank=True)
+
+    
+
+    def clean(self):
+        if self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                raise ValidationError({'start_date': "Дата начала не может быть позже даты окончания."})
+            if self.end_date < self.start_date:
+                raise ValidationError({'end_date': "Дата окончания не может быть раньше даты начала."})
+        super().clean()
+    
+    def __str__(self):
+        return f'{self.title}, {self.description}, {self.start_date}, {self.end_date}'
+
+    class Meta:
+        db_table = '"online"."discount"'
+        ordering = ['title', 'start_date', 'end_date']
+        verbose_name = _('discount')
+        verbose_name_plural = _('discounts')
+
+
 class ShopToClient(UUIDMixin, CreatedMixin):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name=_('shop'))
     client = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name=_('client'))
@@ -172,3 +171,13 @@ class ShopToClient(UUIDMixin, CreatedMixin):
         db_table = '"online"."shop_to_client"'
         verbose_name = _('relationship shop client')
         verbose_name_plural = _('relationships shop client')
+
+
+class FavoriteDiscount(UUIDMixin, CreatedMixin, ModifiedMixin):
+    client = models.ForeignKey(Client, verbose_name=_('client'), on_delete=models.CASCADE)
+    discount = models.ForeignKey(Discount, verbose_name=_('discount'), on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = '"online"."favorite_discount"'
+        verbose_name = _('favorite discount')
+        verbose_name_plural = _('favorite discounts')

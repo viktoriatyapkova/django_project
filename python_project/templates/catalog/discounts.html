@@ -1,0 +1,19 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+    <h1>Discounts</h1>
+
+    {% if discounts %}
+    <ul>
+      {% for discount in discounts %}
+      <li>
+        <a href="{% url 'discount_detail' discount.id %}">{{ discount.title }}</a> ({{ discount.description }} {{ discount.start_date }} {{ discount.end_date }})
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% else %}
+      <p>There are no discounts for now..</p>
+    {% endif %}
+
+{% endblock %}

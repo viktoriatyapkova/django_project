@@ -1,0 +1,20 @@
+{% extends 'base_generic.html' %}
+
+{% block content %}
+    <h1>Favorite Discounts</h1>
+    <ul>
+        {% for favorite in request.user.client.favorite_discounts.all %}
+        <li>
+            {{ favorite.title }} - {{ favorite.description }}
+            {% if favorite in request.user.client.favorite_discounts.all %}
+                <a href="{% url 'remove_from_favorites' favorite.id %}">remove from favorites</a>
+            {% else %}
+                <a href="{% url 'add_to_favorites' %}?id={{ favorite.id }}">add to favorites</a>
+            {% endif %}
+        </li>
+        {% empty %}
+        <p>No favorite discounts yet.</p>
+        {% endfor %}
+    </ul>
+{% endblock %}
+

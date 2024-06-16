@@ -1,6 +1,7 @@
 from rest_framework.serializers import HyperlinkedModelSerializer
 
-from .models import Shop, Marketplace, Discount
+from .models import Discount, Marketplace, Shop
+
 
 class ShopSerializer(HyperlinkedModelSerializer):
     class Meta:

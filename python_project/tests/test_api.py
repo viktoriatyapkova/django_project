@@ -1,10 +1,11 @@
-from django.test import TestCase
-from rest_framework.test import APIClient
 from django.contrib.auth.models import User
+from django.test import TestCase
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
-from python_project_app.models import Discount, Shop, Marketplace
+from python_project_app.models import Discount, Marketplace, Shop
+
 
 def create_api_test(model, url, creation_attrs):
     class ApiTest(TestCase):
@@ -60,9 +61,3 @@ url = '/api/'
 MarketplaceAuthorApiTest = create_api_test(Marketplace, f'{url}marketplaces/', {'title': 'test marketplace'})
 ShopApiTest = create_api_test(Shop, f'{url}shops/', {'title': 'test shop'})
 DiscountApiTest = create_api_test(Discount, f'{url}discounts/', {'title': 'test_title'})
-
-
-
-
-
-
