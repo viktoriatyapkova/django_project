@@ -12,5 +12,5 @@ class PythonProjectAppConfig(AppConfig):
         name (str): The name of the app.
     """
 
-    default_auto_field = "django.db.models.BigAutoField"
-    name = "python_project_app"
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'python_project_app'

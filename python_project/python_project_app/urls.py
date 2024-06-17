@@ -1,3 +1,5 @@
+"""Module with urls."""
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
@@ -26,7 +28,6 @@ urlpatterns = [
     path('favorites/', views.favorites, name='favorites'),
     path('profile/', views.profile, name='profile'),
 ]
-
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
