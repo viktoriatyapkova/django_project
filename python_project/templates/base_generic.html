@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Online Website</title>
+  <style>
+    body {
+      background-color: #ffe6e6; /* Delicate pink background */
+      font-family: 'Open Sans', sans-serif; /* Clean font */
+    }
+   .sidebar-nav {
+      background-color: #fff; /* White background for sidebar */
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+   .sidebar-nav ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+   .sidebar-nav li {
+      margin-bottom: 10px;
+    }
+   .sidebar-nav a {
+      text-decoration: none;
+      color: #337ab7;
+    }
+   .sidebar-nav a:hover {
+      color: #23527c;
+    }
+   .content {
+      margin-left: 200px; /* Make space for sidebar */
+      padding: 20px;
+    }
+   .pagination {
+      background-color: #fff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+   .pagination a {
+      text-decoration: none;
+      color: #337ab7;
+    }
+   .pagination a:hover {
+      color: #23527c;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="sidebar-nav">
+    <ul>
+      <li><a href="{% url 'homepage' %}">Homepage</a></li>
+      {% if user.is_authenticated %}
+        <li><a href="{% url 'shops' %}">Shops</a></li>
+        <li><a href="{% url 'discounts' %}">Discounts</a></li>
+        <li><a href="{% url 'marketplaces' %}">Marketplaces</a></li>
+        <li><a href="{% url 'favorites' %}">Favorites</a></li>
+        <li><a href="{% url 'logout' %}?next={{request.path}}">Log out</a></li>
+      {% else %}
+        <li><a href="{% url 'register' %}?next={{request.path}}">Sign up</a></li>
+        <li><a href="{% url 'login' %}?next={{request.path}}">Log in</a></li>
+      {% endif %}
+    </ul>
+  </div>
+  <div class="content">
+    {% block content %}<!-- default content text (typically empty) -->{% endblock %}
+    {% if is_paginated %}
+    <div class="pagination">
+      <span class="step-links">
+          {% if page_obj.has_previous %}
+              <a href="?page=1">&laquo; first</a>
+              <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+          {% endif %}
+  
+          <span class="current">
+              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+          </span>
+  
+          {% if page_obj.has_next %}
+              <a href="?page={{ page_obj.next_page_number }}">next</a>
+              <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+          {% endif %}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>
