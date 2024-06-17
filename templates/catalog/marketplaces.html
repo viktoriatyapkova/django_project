@@ -1,0 +1,19 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+    <h1>Marketplaces</h1>
+
+    {% if marketplaces_list %}
+    <ul>
+
+      {% for marketplace in marketplaces_list %}
+      <li>
+        <a href="{% url 'marketplace'%}?id={{marketplace.id}}">{{ marketplace.full_name }}</a> {{marketplace.url_address}}
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% else %}
+      <p>There are no marketplaces for now..</p>
+    {% endif %}
+{% endblock %}
